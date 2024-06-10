@@ -31,14 +31,19 @@ def list_file_history(file_id):
     versions = []
     
     # Get the file details to retrieve the creation date and name
-    response = service.files().get(fileId=file_id, fields='name, createdTime').execute()  # Added createdTime
+    response = service.files().get(
+        fileId=file_id, 
+        fields='name, createdTime',
+        supportsAllDrives=True  # Supports shared drives
+    ).execute()
     file_name = response['name']
-    created_time = response['createdTime']  # Capture the original creation date
+    created_time = response['createdTime']
     
     # Fetching revisions and including 'lastModifyingUser.displayName'
     versions_response = service.revisions().list(
         fileId=file_id, 
-        fields='revisions(id, mimeType, modifiedTime, size, keepForever, published, lastModifyingUser)'
+        fields='revisions(id, mimeType, modifiedTime, size, keepForever, published, lastModifyingUser)',
+        supportsAllDrives=True  # Supports shared drives
     ).execute()
     versions = versions_response.get('revisions', [])
 
@@ -47,7 +52,7 @@ def list_file_history(file_id):
         history.append({
             'File ID': file_id,
             'File Name': file_name,
-            'Creation Date': created_time,  # Include creation date
+            'Creation Date': created_time,
             'Version ID': version.get('id', 'N/A'),
             'MIME Type': version.get('mimeType', 'N/A'),
             'Modified Time': version.get('modifiedTime', 'N/A'),
@@ -65,7 +70,7 @@ def save_metadata(metadata):
         fieldnames = [
             'File ID', 
             'File Name', 
-            'Creation Date',  # Added field
+            'Creation Date', 
             'Version ID', 
             'MIME Type', 
             'Modified Time', 
@@ -82,7 +87,7 @@ def save_metadata(metadata):
     print('File history saved to file_history.csv')
 
 def list_files_and_save_history(folder_id):
-    """List files in a specific Google Drive directory and save their history."""
+    """List files in a specific Google Drive or shared drive directory and save their history."""
     creds = authenticate()
     service = build('drive', 'v3', credentials=creds)
     query = f"'{folder_id}' in parents"
@@ -95,6 +100,8 @@ def list_files_and_save_history(folder_id):
             q=query,
             spaces='drive',
             fields='nextPageToken, files(id, name)',
+            supportsAllDrives=True,  # Supports shared drives
+            includeItemsFromAllDrives=True,  # Include shared drive items
             pageToken=page_token
         ).execute()
         
@@ -110,8 +117,8 @@ def list_files_and_save_history(folder_id):
     save_metadata(all_history)
 
 def main():
-    parser = argparse.ArgumentParser(description='Download metadata for files in a Google Drive folder.')
-    parser.add_argument('folder_id', help='The ID of the Google Drive folder')
+    parser = argparse.ArgumentParser(description='Download metadata for files in a Google Drive or shared drive folder.')
+    parser.add_argument('folder_id', help='The ID of the Google Drive or shared drive folder')
     args = parser.parse_args()
     
     list_files_and_save_history(args.folder_id)
