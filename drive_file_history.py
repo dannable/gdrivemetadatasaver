@@ -7,7 +7,7 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 
 # Define the scope for the Google Drive API
-SCOPES = ['https://www.googleapis.com/auth/drive.metadata.readonly']
+SCOPES = ['https://www.googleapis.com/auth/drive']
 
 def authenticate():
     """Authenticate and create the API client."""
@@ -24,28 +24,35 @@ def authenticate():
             token.write(creds.to_json())
     return creds
 
-def list_file_history(service, file_id):
+def list_file_history(file_id):
     """Retrieve the entire version history for a specific file."""
+    creds = authenticate()
+    service = build('drive', 'v3', credentials=creds)
     versions = []
     
     # Get the file details to retrieve the version history
-    file_metadata = service.files().get(fileId=file_id, fields='name').execute()
-    file_name = file_metadata['name']
+    response = service.files().get(fileId=file_id, fields='name').execute()  # Updated to get only 'name'
+    file_name = response['name']
     
-    revisions_response = service.revisions().list(fileId=file_id, fields='revisions(id, mimeType, modifiedTime, size, keepForever, published)').execute()
-    revisions = revisions_response.get('revisions', [])
+    # Fetching revisions and including 'lastModifyingUser.displayName'
+    versions_response = service.revisions().list(
+        fileId=file_id, 
+        fields='revisions(id, mimeType, modifiedTime, size, keepForever, published, lastModifyingUser.displayName)'
+    ).execute()  # Updated fields
+    versions = versions_response.get('revisions', [])
 
     history = []
-    for revision in revisions:
+    for version in versions:
         history.append({
             'File ID': file_id,
             'File Name': file_name,
-            'Version ID': revision.get('id', 'N/A'),
-            'MIME Type': revision.get('mimeType', 'N/A'),
-            'Modified Time': revision.get('modifiedTime', 'N/A'),
-            'Size': revision.get('size', 'N/A'),
-            'Keep Forever': revision.get('keepForever', 'N/A'),
-            'Published': revision.get('published', 'N/A')
+            'Version ID': version.get('id', 'N/A'),
+            'MIME Type': version.get('mimeType', 'N/A'),
+            'Modified Time': version.get('modifiedTime', 'N/A'),
+            'Size': version.get('size', 'N/A'),
+            'Keep Forever': version.get('keepForever', 'N/A'),
+            'Published': version.get('published', 'N/A'),
+            'Last Modifying User': version.get('lastModifyingUser', {}).get('displayName', 'N/A')  # New field
         })
     
     return history
@@ -53,7 +60,17 @@ def list_file_history(service, file_id):
 def save_metadata(metadata):
     """Save metadata to a CSV file."""
     with open('file_history.csv', 'w', newline='') as csvfile:
-        fieldnames = ['File ID', 'File Name', 'Version ID', 'MIME Type', 'Modified Time', 'Size', 'Keep Forever', 'Published']
+        fieldnames = [
+            'File ID', 
+            'File Name', 
+            'Version ID', 
+            'MIME Type', 
+            'Modified Time', 
+            'Size', 
+            'Keep Forever', 
+            'Published',
+            'Last Modifying User'  # New field
+        ]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         for data in metadata:
@@ -80,7 +97,7 @@ def list_files_and_save_history(folder_id):
         
         for file in response.get('files', []):
             print(f"Processing file: {file['name']} (ID: {file['id']})")
-            history = list_file_history(service, file['id'])
+            history = list_file_history(file['id'])
             all_history.extend(history)
         
         page_token = response.get('nextPageToken', None)
