@@ -28,12 +28,12 @@ def list_file_history(file_id):
     """Retrieve the entire version history for a specific file, including creation date."""
     creds = authenticate()
     service = build('drive', 'v3', credentials=creds)
-    versions = []
     
     # Get the file details to retrieve the creation date and name
     response = service.files().get(
         fileId=file_id, 
-        fields='name, createdTime'
+        fields='name, createdTime',
+        supportsAllDrives=True  # Added supportsAllDrives
     ).execute()
     file_name = response['name']
     created_time = response['createdTime']
@@ -41,7 +41,8 @@ def list_file_history(file_id):
     # Fetching revisions and including 'lastModifyingUser.displayName'
     versions_response = service.revisions().list(
         fileId=file_id, 
-        fields='revisions(id, mimeType, modifiedTime, size, keepForever, published, lastModifyingUser)'
+        fields='revisions(id, mimeType, modifiedTime, size, keepForever, published, lastModifyingUser)',
+        supportsAllDrives=True  # Added supportsAllDrives
     ).execute()
     versions = versions_response.get('revisions', [])
 
@@ -101,6 +102,7 @@ def list_files_and_save_history(folder_id, is_shared_drive):
             includeItemsFromAllDrives=True,  # Include items from all drives
             corpora='drive' if is_shared_drive else 'user',  # Specify corpora based on whether it's a shared drive
             driveId=folder_id if is_shared_drive else None,  # Set driveId if it's a shared drive
+            supportsAllDrives=True,  # Added supportsAllDrives
             pageToken=page_token
         ).execute()
         
