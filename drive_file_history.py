@@ -25,20 +25,21 @@ def authenticate():
     return creds
 
 def list_file_history(file_id):
-    """Retrieve the entire version history for a specific file."""
+    """Retrieve the entire version history for a specific file, including creation date."""
     creds = authenticate()
     service = build('drive', 'v3', credentials=creds)
     versions = []
     
-    # Get the file details to retrieve the version history
-    response = service.files().get(fileId=file_id, fields='name').execute()  # Get the file name
+    # Get the file details to retrieve the creation date and name
+    response = service.files().get(fileId=file_id, fields='name, createdTime').execute()  # Added createdTime
     file_name = response['name']
+    created_time = response['createdTime']  # Capture the original creation date
     
     # Fetching revisions and including 'lastModifyingUser.displayName'
     versions_response = service.revisions().list(
         fileId=file_id, 
         fields='revisions(id, mimeType, modifiedTime, size, keepForever, published, lastModifyingUser)'
-    ).execute()  # Corrected field selection
+    ).execute()
     versions = versions_response.get('revisions', [])
 
     history = []
@@ -46,13 +47,14 @@ def list_file_history(file_id):
         history.append({
             'File ID': file_id,
             'File Name': file_name,
+            'Creation Date': created_time,  # Include creation date
             'Version ID': version.get('id', 'N/A'),
             'MIME Type': version.get('mimeType', 'N/A'),
             'Modified Time': version.get('modifiedTime', 'N/A'),
             'Size': version.get('size', 'N/A'),
             'Keep Forever': version.get('keepForever', 'N/A'),
             'Published': version.get('published', 'N/A'),
-            'Last Modifying User': version.get('lastModifyingUser', {}).get('displayName', 'N/A')  # Corrected field access
+            'Last Modifying User': version.get('lastModifyingUser', {}).get('displayName', 'N/A')
         })
     
     return history
@@ -63,13 +65,14 @@ def save_metadata(metadata):
         fieldnames = [
             'File ID', 
             'File Name', 
+            'Creation Date',  # Added field
             'Version ID', 
             'MIME Type', 
             'Modified Time', 
             'Size', 
             'Keep Forever', 
             'Published',
-            'Last Modifying User'  # New field
+            'Last Modifying User'
         ]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
