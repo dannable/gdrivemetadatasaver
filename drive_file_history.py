@@ -33,8 +33,7 @@ def list_file_history(file_id):
     # Get the file details to retrieve the creation date and name
     response = service.files().get(
         fileId=file_id, 
-        fields='name, createdTime',
-        supportsAllDrives=True  # Ensure support for shared drives
+        fields='name, createdTime'
     ).execute()
     file_name = response['name']
     created_time = response['createdTime']
@@ -42,8 +41,7 @@ def list_file_history(file_id):
     # Fetching revisions and including 'lastModifyingUser.displayName'
     versions_response = service.revisions().list(
         fileId=file_id, 
-        fields='revisions(id, mimeType, modifiedTime, size, keepForever, published, lastModifyingUser)',
-        supportsAllDrives=True  # Ensure support for shared drives
+        fields='revisions(id, mimeType, modifiedTime, size, keepForever, published, lastModifyingUser)'
     ).execute()
     versions = versions_response.get('revisions', [])
 
@@ -101,7 +99,6 @@ def list_files_and_save_history(folder_id, is_shared_drive):
             spaces='drive',
             fields='nextPageToken, files(id, name)',
             includeItemsFromAllDrives=True,  # Include items from all drives
-            supportsAllDrives=True,  # Ensure support for shared drives
             corpora='drive' if is_shared_drive else 'user',  # Specify corpora based on whether it's a shared drive
             driveId=folder_id if is_shared_drive else None,  # Set driveId if it's a shared drive
             pageToken=page_token
