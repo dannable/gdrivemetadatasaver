@@ -31,14 +31,14 @@ def list_file_history(file_id):
     versions = []
     
     # Get the file details to retrieve the version history
-    response = service.files().get(fileId=file_id, fields='name').execute()  # Updated to get only 'name'
+    response = service.files().get(fileId=file_id, fields='name').execute()  # Get the file name
     file_name = response['name']
     
     # Fetching revisions and including 'lastModifyingUser.displayName'
     versions_response = service.revisions().list(
         fileId=file_id, 
-        fields='revisions(id, mimeType, modifiedTime, size, keepForever, published, lastModifyingUser.displayName)'
-    ).execute()  # Updated fields
+        fields='revisions(id, mimeType, modifiedTime, size, keepForever, published, lastModifyingUser)'
+    ).execute()  # Corrected field selection
     versions = versions_response.get('revisions', [])
 
     history = []
@@ -52,7 +52,7 @@ def list_file_history(file_id):
             'Size': version.get('size', 'N/A'),
             'Keep Forever': version.get('keepForever', 'N/A'),
             'Published': version.get('published', 'N/A'),
-            'Last Modifying User': version.get('lastModifyingUser', {}).get('displayName', 'N/A')  # New field
+            'Last Modifying User': version.get('lastModifyingUser', {}).get('displayName', 'N/A')  # Corrected field access
         })
     
     return history
