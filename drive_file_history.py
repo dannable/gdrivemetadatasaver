@@ -34,7 +34,7 @@ def list_file_history(file_id):
     response = service.files().get(
         fileId=file_id, 
         fields='name, createdTime',
-        supportsAllDrives=True  # Supports shared drives
+        supportsAllDrives=True  # Ensure support for shared drives
     ).execute()
     file_name = response['name']
     created_time = response['createdTime']
@@ -43,7 +43,7 @@ def list_file_history(file_id):
     versions_response = service.revisions().list(
         fileId=file_id, 
         fields='revisions(id, mimeType, modifiedTime, size, keepForever, published, lastModifyingUser)',
-        supportsAllDrives=True  # Supports shared drives
+        supportsAllDrives=True  # Ensure support for shared drives
     ).execute()
     versions = versions_response.get('revisions', [])
 
@@ -86,7 +86,7 @@ def save_metadata(metadata):
     
     print('File history saved to file_history.csv')
 
-def list_files_and_save_history(folder_id):
+def list_files_and_save_history(folder_id, is_shared_drive):
     """List files in a specific Google Drive or shared drive directory and save their history."""
     creds = authenticate()
     service = build('drive', 'v3', credentials=creds)
@@ -100,8 +100,10 @@ def list_files_and_save_history(folder_id):
             q=query,
             spaces='drive',
             fields='nextPageToken, files(id, name)',
-            supportsAllDrives=True,  # Supports shared drives
-            includeItemsFromAllDrives=True,  # Include shared drive items
+            includeItemsFromAllDrives=True,  # Include items from all drives
+            supportsAllDrives=True,  # Ensure support for shared drives
+            corpora='drive' if is_shared_drive else 'user',  # Specify corpora based on whether it's a shared drive
+            driveId=folder_id if is_shared_drive else None,  # Set driveId if it's a shared drive
             pageToken=page_token
         ).execute()
         
@@ -119,9 +121,10 @@ def list_files_and_save_history(folder_id):
 def main():
     parser = argparse.ArgumentParser(description='Download metadata for files in a Google Drive or shared drive folder.')
     parser.add_argument('folder_id', help='The ID of the Google Drive or shared drive folder')
+    parser.add_argument('--shared_drive', action='store_true', help='Specify if the folder is in a shared drive')
     args = parser.parse_args()
     
-    list_files_and_save_history(args.folder_id)
+    list_files_and_save_history(args.folder_id, args.shared_drive)
 
 if __name__ == '__main__':
     main()
