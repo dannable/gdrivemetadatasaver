@@ -7,7 +7,7 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 
 # Define the scope for the Google Drive API
-SCOPES = ['https://www.googleapis.com/auth/drive']
+SCOPES = ['https://www.googleapis.com/auth/drive.metadata.readonly']
 
 def authenticate():
     """Authenticate and create the API client."""
@@ -24,29 +24,28 @@ def authenticate():
             token.write(creds.to_json())
     return creds
 
-def list_file_history(file_id):
+def list_file_history(service, file_id):
     """Retrieve the entire version history for a specific file."""
-    creds = authenticate()
-    service = build('drive', 'v3', credentials=creds)
     versions = []
     
     # Get the file details to retrieve the version history
-    response = service.files().get(fileId=file_id, fields='name, versions').execute()
-    file_name = response['name']
-    versions_response = service.revisions().list(fileId=file_id, fields='revisions(id, mimeType, modifiedTime, size, keepForever, published)').execute()
-    versions = versions_response.get('revisions', [])
+    file_metadata = service.files().get(fileId=file_id, fields='name').execute()
+    file_name = file_metadata['name']
+    
+    revisions_response = service.revisions().list(fileId=file_id, fields='revisions(id, mimeType, modifiedTime, size, keepForever, published)').execute()
+    revisions = revisions_response.get('revisions', [])
 
     history = []
-    for version in versions:
+    for revision in revisions:
         history.append({
             'File ID': file_id,
             'File Name': file_name,
-            'Version ID': version.get('id', 'N/A'),
-            'MIME Type': version.get('mimeType', 'N/A'),
-            'Modified Time': version.get('modifiedTime', 'N/A'),
-            'Size': version.get('size', 'N/A'),
-            'Keep Forever': version.get('keepForever', 'N/A'),
-            'Published': version.get('published', 'N/A')
+            'Version ID': revision.get('id', 'N/A'),
+            'MIME Type': revision.get('mimeType', 'N/A'),
+            'Modified Time': revision.get('modifiedTime', 'N/A'),
+            'Size': revision.get('size', 'N/A'),
+            'Keep Forever': revision.get('keepForever', 'N/A'),
+            'Published': revision.get('published', 'N/A')
         })
     
     return history
@@ -81,7 +80,7 @@ def list_files_and_save_history(folder_id):
         
         for file in response.get('files', []):
             print(f"Processing file: {file['name']} (ID: {file['id']})")
-            history = list_file_history(file['id'])
+            history = list_file_history(service, file['id'])
             all_history.extend(history)
         
         page_token = response.get('nextPageToken', None)
